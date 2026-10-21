@@ -3,4 +3,4 @@
 
 - Index number: PS/CSC/23/0341
 - GitHub username: opoku-fokuoemmanuel
-- Phase 1 stage: 1
+- Phase 1 stage: 0

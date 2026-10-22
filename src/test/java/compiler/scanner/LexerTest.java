@@ -66,4 +66,29 @@ class LexerTest {
         lexer.scanTokens();
         assertFalse(lexer.hasErrors());
     }
+
+    // ---- Stage 2: punctuation and single-character operators ---------
+
+    @Test
+    void punctuation() {
+        assertEquals(List.of(SEMICOLON, LPAREN, RPAREN, LBRACE, RBRACE, EOF), types("; ( ) { }"));
+    }
+
+    @Test
+    void singleCharacterOperators() {
+        assertEquals(List.of(PLUS, MINUS, STAR, PERCENT, EOF), types("+ - * %"));
+    }
+
+    @Test
+    void symbolsWithoutSpacesStillSplit() {
+        assertEquals(List.of(LPAREN, PLUS, RPAREN, SEMICOLON, EOF), types("(+);"));
+    }
+
+    @Test
+    void tokenPositionsAreRecorded() {
+        Token plus = scan("(\n +").get(1);
+        assertEquals("+", plus.lexeme());
+        assertEquals(2, plus.line());
+        assertEquals(2, plus.column());
+    }
 }

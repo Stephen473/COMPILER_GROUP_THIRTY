@@ -91,4 +91,35 @@ class LexerTest {
         assertEquals(2, plus.line());
         assertEquals(2, plus.column());
     }
+
+    // ---- Stage 3: multi-character operators --------------------------
+
+    @Test
+    void arithmeticOperators() {
+        assertEquals(List.of(PLUS, MINUS, STAR, SLASH, PERCENT, EOF), types("+ - * / %"));
+    }
+
+    @Test
+    void longestMatchOperators() {
+        assertEquals(
+                List.of(EQ, NEQ, LE, GE, LT, GT, ASSIGN, AND, OR, NOT, EOF),
+                types("== != <= >= < > = && || !"));
+    }
+
+    @Test
+    void adjacentOperatorsSplitGreedily() {
+        assertEquals(List.of(EQ, ASSIGN, EOF), types("==="));
+        assertEquals(List.of(LE, GT, EOF), types("<=>"));
+        assertEquals(List.of(NEQ, ASSIGN, EOF), types("!=="));
+    }
+
+    @Test
+    void loneAmpersandAndBarAreErrors() {
+        List<LexicalError> amp = errorsOf("&");
+        assertEquals(1, amp.size());
+        assertTrue(amp.get(0).message().contains("&&"));
+        List<LexicalError> bar = errorsOf("|");
+        assertEquals(1, bar.size());
+        assertTrue(bar.get(0).message().contains("||"));
+    }
 }

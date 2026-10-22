@@ -73,6 +73,19 @@ public class Lexer {
             case '-' -> add(MINUS, "-");
             case '*' -> add(STAR, "*");
             case '%' -> add(PERCENT, "%");
+            case '/' -> add(SLASH, "/");
+            case '=' -> { if (match('=')) add(EQ, "=="); else add(ASSIGN, "="); }
+            case '!' -> { if (match('=')) add(NEQ, "!="); else add(NOT, "!"); }
+            case '<' -> { if (match('=')) add(LE, "<="); else add(LT, "<"); }
+            case '>' -> { if (match('=')) add(GE, ">="); else add(GT, ">"); }
+            case '&' -> {
+                if (match('&')) add(AND, "&&");
+                else report("Unexpected '&' (did you mean '&&'?)");
+            }
+            case '|' -> {
+                if (match('|')) add(OR, "||");
+                else report("Unexpected '|' (did you mean '||'?)");
+            }
             default -> report("Unexpected character " + describe(c));
         }
     }
@@ -92,6 +105,14 @@ public class Lexer {
             column++;
         }
         return c;
+    }
+
+    private boolean match(char expected) {
+        if (isAtEnd() || source.charAt(pos) != expected) {
+            return false;
+        }
+        advance();
+        return true;
     }
 
     /** Printable ASCII shows as 'c'; anything else shows as U+XXXX. */

@@ -64,6 +64,15 @@ public class Lexer {
         char c = advance();
         switch (c) {
             case ' ', '\t', '\r', '\n' -> { /* whitespace: advance() already tracked the line */ }
+            case '(' -> add(LPAREN, "(");
+            case ')' -> add(RPAREN, ")");
+            case '{' -> add(LBRACE, "{");
+            case '}' -> add(RBRACE, "}");
+            case ';' -> add(SEMICOLON, ";");
+            case '+' -> add(PLUS, "+");
+            case '-' -> add(MINUS, "-");
+            case '*' -> add(STAR, "*");
+            case '%' -> add(PERCENT, "%");
             default -> report("Unexpected character " + describe(c));
         }
     }

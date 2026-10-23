@@ -159,4 +159,60 @@ class LexerTest {
         assertEquals(2, errs.get(0).line());
         assertEquals(3, errs.get(0).column());
     }
+
+    // ---- Stage 5: identifiers and keywords ---------------------------
+
+    @Test
+    void allNineKeywords() {
+        assertEquals(
+                List.of(KW_INT, KW_BOOL, KW_CONST, KW_IF, KW_ELSE, KW_WHILE,
+                        KW_BREAK, KW_CONTINUE, KW_PRINT, EOF),
+                types("int bool const if else while break continue print"));
+    }
+
+    @Test
+    void keywordsAreCaseSensitive() {
+        assertEquals(List.of(IDENTIFIER, IDENTIFIER, IDENTIFIER, EOF), types("INT Print While"));
+    }
+
+    @Test
+    void keywordPrefixIsStillAnIdentifier() {
+        assertEquals(List.of(KW_INT, IDENTIFIER, IDENTIFIER, EOF), types("int integer printer"));
+    }
+
+    @Test
+    void identifiersWithUnderscoresAndDigits() {
+        List<Token> t = scan("_count student_name score2");
+        assertEquals(List.of(IDENTIFIER, IDENTIFIER, IDENTIFIER, EOF),
+                t.stream().map(Token::type).toList());
+        assertEquals("student_name", t.get(1).lexeme());
+    }
+
+    @Test
+    void boolLiteralsKeepTheirText() {
+        List<Token> t = scan("true false");
+        assertEquals(BOOL_LITERAL, t.get(0).type());
+        assertEquals("true", t.get(0).lexeme());
+        assertEquals(BOOL_LITERAL, t.get(1).type());
+        assertEquals("false", t.get(1).lexeme());
+    }
+
+    @Test
+    void identifierPositionsAreTracked() {
+        Token y = scan("int x;\n  y = z;").get(3);
+        assertEquals("y", y.lexeme());
+        assertEquals(2, y.line());
+        assertEquals(3, y.column());
+    }
+
+    @Test
+    void commentsMixedWithCode() {
+        assertEquals(List.of(KW_INT, IDENTIFIER, SEMICOLON, EOF),
+                types("// note\nint /* inline */ x; // trailing"));
+    }
+
+    @Test
+    void wordsAreSplitByOperators() {
+        assertEquals(List.of(IDENTIFIER, PLUS, IDENTIFIER, EOF), types("a+b"));
+    }
 }

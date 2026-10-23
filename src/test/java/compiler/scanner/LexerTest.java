@@ -215,4 +215,46 @@ class LexerTest {
     void wordsAreSplitByOperators() {
         assertEquals(List.of(IDENTIFIER, PLUS, IDENTIFIER, EOF), types("a+b"));
     }
+
+    // ---- Stage 6: integer literals -----------------------------------
+
+    @Test
+    void zeroAndMaxIntAreValid() {
+        List<Token> t = scan("0 2147483647");
+        assertEquals(INT_LITERAL, t.get(0).type());
+        assertEquals(INT_LITERAL, t.get(1).type());
+        assertEquals("2147483647", t.get(1).lexeme());
+    }
+
+    @Test
+    void minusIsAlwaysItsOwnToken() {
+        assertEquals(List.of(MINUS, INT_LITERAL, EOF), types("-20"));
+    }
+
+    @Test
+    void numbersSeparatedByOperators() {
+        assertEquals(List.of(INT_LITERAL, PLUS, INT_LITERAL, EOF), types("12+34"));
+    }
+
+    @Test
+    void operatorsWithoutSpacesStillSplitCorrectly() {
+        assertEquals(List.of(IDENTIFIER, GE, INT_LITERAL, EOF), types("a>=1"));
+        assertEquals(List.of(IDENTIFIER, ASSIGN, NOT, IDENTIFIER, EOF), types("a=!b"));
+    }
+
+    @Test
+    void positionsAreTracked() {
+        List<Token> t = scan("int x;\n  y = 1;");
+        Token y = t.get(3);
+        assertEquals("y", y.lexeme());
+        assertEquals(2, y.line());
+        assertEquals(3, y.column());
+    }
+
+    @Test
+    void fullDeclarationTokenSequence() {
+        assertEquals(
+                List.of(KW_CONST, KW_INT, IDENTIFIER, ASSIGN, INT_LITERAL, SEMICOLON, EOF),
+                types("const int LIMIT = 10;"));
+    }
 }

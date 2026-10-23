@@ -109,7 +109,9 @@ public class Lexer {
                 else report("Unexpected '|' (did you mean '||'?)");
             }
             default -> {
-                if (isWordStart(c)) {
+                if (isDigit(c)) {
+                    scanNumber(c);
+                } else if (isWordStart(c)) {
                     scanWord(c);
                 } else {
                     report("Unexpected character " + describe(c));
@@ -127,6 +129,14 @@ public class Lexer {
         }
         String text = sb.toString();
         add(WORDS.getOrDefault(text, IDENTIFIER), text);
+    }
+
+    private void scanNumber(char first) {
+        StringBuilder sb = new StringBuilder().append(first);
+        while (!isAtEnd() && isDigit(peek())) {
+            sb.append(advance());
+        }
+        add(INT_LITERAL, sb.toString());
     }
 
     // ---- Comments ----------------------------------------------------------

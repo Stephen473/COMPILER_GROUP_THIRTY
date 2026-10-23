@@ -73,7 +73,15 @@ public class Lexer {
             case '-' -> add(MINUS, "-");
             case '*' -> add(STAR, "*");
             case '%' -> add(PERCENT, "%");
-            case '/' -> add(SLASH, "/");
+            case '/' -> {
+                if (match('/')) {
+                    skipLineComment();
+                } else if (match('*')) {
+                    skipBlockComment();
+                } else {
+                    add(SLASH, "/");
+                }
+            }
             case '=' -> { if (match('=')) add(EQ, "=="); else add(ASSIGN, "="); }
             case '!' -> { if (match('=')) add(NEQ, "!="); else add(NOT, "!"); }
             case '<' -> { if (match('=')) add(LE, "<="); else add(LT, "<"); }
@@ -88,6 +96,27 @@ public class Lexer {
             }
             default -> report("Unexpected character " + describe(c));
         }
+    }
+
+    // ---- Comments ----------------------------------------------------------
+
+    private void skipLineComment() {
+        while (!isAtEnd() && peek() != '\n') {
+            advance();
+        }
+    }
+
+    private void skipBlockComment() {
+        while (!isAtEnd()) {
+            if (peek() == '*' && peekNext() == '/') {
+                advance();
+                advance();
+                return;
+            }
+            advance();
+        }
+        // Reported at the position where the comment started
+        report("Unterminated block comment");
     }
 
     // ---- Low-level helpers -------------------------------------------------
@@ -113,6 +142,14 @@ public class Lexer {
         }
         advance();
         return true;
+    }
+
+    private char peek() {
+        return isAtEnd() ? '\0' : source.charAt(pos);
+    }
+
+    private char peekNext() {
+        return pos + 1 >= source.length() ? '\0' : source.charAt(pos + 1);
     }
 
     /** Printable ASCII shows as 'c'; anything else shows as U+XXXX. */

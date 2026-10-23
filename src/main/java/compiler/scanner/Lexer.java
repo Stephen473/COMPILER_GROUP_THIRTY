@@ -2,6 +2,7 @@ package compiler.scanner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static compiler.scanner.TokenType.*;
 
@@ -16,6 +17,19 @@ import static compiler.scanner.TokenType.*;
  * Design: docs/SCANNER_DESIGN.md
  */
 public class Lexer {
+
+    private static final Map<String, TokenType> WORDS = Map.ofEntries(
+            Map.entry("int", KW_INT),
+            Map.entry("bool", KW_BOOL),
+            Map.entry("const", KW_CONST),
+            Map.entry("if", KW_IF),
+            Map.entry("else", KW_ELSE),
+            Map.entry("while", KW_WHILE),
+            Map.entry("break", KW_BREAK),
+            Map.entry("continue", KW_CONTINUE),
+            Map.entry("print", KW_PRINT),
+            Map.entry("true", BOOL_LITERAL),
+            Map.entry("false", BOOL_LITERAL));
 
     private final String source;
     private final List<Token> tokens = new ArrayList<>();
@@ -94,8 +108,25 @@ public class Lexer {
                 if (match('|')) add(OR, "||");
                 else report("Unexpected '|' (did you mean '||'?)");
             }
-            default -> report("Unexpected character " + describe(c));
+            default -> {
+                if (isWordStart(c)) {
+                    scanWord(c);
+                } else {
+                    report("Unexpected character " + describe(c));
+                }
+            }
         }
+    }
+
+    // ---- Words and numbers -------------------------------------------------
+
+    private void scanWord(char first) {
+        StringBuilder sb = new StringBuilder().append(first);
+        while (!isAtEnd() && isWordPart(peek())) {
+            sb.append(advance());
+        }
+        String text = sb.toString();
+        add(WORDS.getOrDefault(text, IDENTIFIER), text);
     }
 
     // ---- Comments ----------------------------------------------------------
@@ -150,6 +181,18 @@ public class Lexer {
 
     private char peekNext() {
         return pos + 1 >= source.length() ? '\0' : source.charAt(pos + 1);
+    }
+
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    private static boolean isWordStart(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    private static boolean isWordPart(char c) {
+        return isWordStart(c) || isDigit(c);
     }
 
     /** Printable ASCII shows as 'c'; anything else shows as U+XXXX. */

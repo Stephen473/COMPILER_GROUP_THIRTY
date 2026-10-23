@@ -122,4 +122,41 @@ class LexerTest {
         assertEquals(1, bar.size());
         assertTrue(bar.get(0).message().contains("||"));
     }
+
+    // ---- Stage 4: comments -------------------------------------------
+
+    @Test
+    void lineCommentIsSkipped() {
+        assertEquals(List.of(PLUS, MINUS, EOF), types("+ // ignored ( ) \n-"));
+    }
+
+    @Test
+    void lineCommentAtEndOfFileWithoutNewline() {
+        assertEquals(List.of(EOF), types("// nothing else"));
+    }
+
+    @Test
+    void blockCommentIsSkippedAndLinesStillCount() {
+        List<Token> t = scan("/* one\n two\n three */ +");
+        assertEquals(PLUS, t.get(0).type());
+        assertEquals(3, t.get(0).line());
+    }
+
+    @Test
+    void slashAloneIsStillDivision() {
+        assertEquals(List.of(SLASH, SLASH, EOF), types("/ /"));
+    }
+
+    @Test
+    void blockCommentsDoNotNest() {
+        assertEquals(List.of(PLUS, EOF), types("/* a /* b */ +"));
+    }
+
+    @Test
+    void unterminatedBlockCommentPointsAtItsStart() {
+        List<LexicalError> errs = errorsOf("+\n  /* never closed");
+        assertEquals(1, errs.size());
+        assertEquals(2, errs.get(0).line());
+        assertEquals(3, errs.get(0).column());
+    }
 }

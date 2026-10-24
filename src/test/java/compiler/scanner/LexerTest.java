@@ -257,4 +257,47 @@ class LexerTest {
                 List.of(KW_CONST, KW_INT, IDENTIFIER, ASSIGN, INT_LITERAL, SEMICOLON, EOF),
                 types("const int LIMIT = 10;"));
     }
+
+    // ---- Stage 7: number errors --------------------------------------
+
+    @Test
+    void numberOneAboveMaxIsAnError() {
+        List<LexicalError> errs = errorsOf("2147483648");
+        assertEquals(1, errs.size());
+        assertTrue(errs.get(0).message().contains("too large"));
+    }
+
+    @Test
+    void veryLongNumberDoesNotCrash() {
+        List<LexicalError> errs = errorsOf("99999999999999999999");
+        assertEquals(1, errs.size());
+        assertTrue(errs.get(0).message().contains("too large"));
+    }
+
+    @Test
+    void leadingZerosAreAnError() {
+        List<LexicalError> errs = errorsOf("int a = 007;");
+        assertEquals(1, errs.size());
+        assertTrue(errs.get(0).message().contains("Leading zeros"));
+    }
+
+    @Test
+    void zeroAloneIsNotALeadingZeroError() {
+        assertTrue(errorsOf("0").isEmpty());
+    }
+
+    @Test
+    void identifierCannotStartWithDigit() {
+        List<LexicalError> errs = errorsOf("2age");
+        assertEquals(1, errs.size());
+        assertTrue(errs.get(0).message().contains("2age"));
+    }
+
+    @Test
+    void numberErrorsDoNotStopScanning() {
+        Lexer lexer = new Lexer("007 5 2age 9");
+        List<Token> t = lexer.scanTokens();
+        assertEquals(2, lexer.getErrors().size());
+        assertEquals(List.of(INT_LITERAL, INT_LITERAL, EOF), t.stream().map(Token::type).toList());
+    }
 }

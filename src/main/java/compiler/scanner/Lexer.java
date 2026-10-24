@@ -18,6 +18,8 @@ import static compiler.scanner.TokenType.*;
  */
 public class Lexer {
 
+    private static final int MAX_INT = Integer.MAX_VALUE;
+
     private static final Map<String, TokenType> WORDS = Map.ofEntries(
             Map.entry("int", KW_INT),
             Map.entry("bool", KW_BOOL),
@@ -136,7 +138,28 @@ public class Lexer {
         while (!isAtEnd() && isDigit(peek())) {
             sb.append(advance());
         }
-        add(INT_LITERAL, sb.toString());
+
+        // A letter or underscore right after digits, e.g. 2age: take the whole word
+        if (!isAtEnd() && isWordStart(peek())) {
+            while (!isAtEnd() && isWordPart(peek())) {
+                sb.append(advance());
+            }
+            report("Invalid token '" + sb + "': identifiers cannot start with a digit");
+            return;
+        }
+
+        String text = sb.toString();
+        if (text.length() > 1 && text.charAt(0) == '0') {
+            report("Leading zeros are not allowed in '" + text + "'");
+            return;
+        }
+        try {
+            Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            report("Integer literal '" + text + "' is too large (maximum " + MAX_INT + ")");
+            return;
+        }
+        add(INT_LITERAL, text);
     }
 
     // ---- Comments ----------------------------------------------------------

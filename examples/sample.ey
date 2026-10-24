@@ -1,0 +1,15 @@
+// Sum the even numbers from 1 to 10
+const int LIMIT = 10;
+int n = 1;
+int sum = 0;
+
+while (n <= LIMIT) {
+    if (n % 2 == 0) {
+        sum = sum + n;
+    }
+    n = n + 1;
+}
+
+print(sum);
+bool big = sum > 20;
+print(big);

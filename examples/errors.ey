@@ -1,0 +1,6 @@
+int ok = 1;
+int bad = 5 @ 3;
+int 2fast = 7;
+int big = 99999999999;
+bool x = a & b;
+/* this comment is never closed

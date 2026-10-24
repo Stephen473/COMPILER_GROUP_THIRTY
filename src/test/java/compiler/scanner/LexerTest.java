@@ -2,6 +2,8 @@ package compiler.scanner;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static compiler.scanner.TokenType.*;
@@ -299,5 +301,23 @@ class LexerTest {
         List<Token> t = lexer.scanTokens();
         assertEquals(2, lexer.getErrors().size());
         assertEquals(List.of(INT_LITERAL, INT_LITERAL, EOF), t.stream().map(Token::type).toList());
+    }
+
+    // ---- Stage 8: example programs -----------------------------------
+
+    @Test
+    void sampleProgramScansWithoutErrors() throws Exception {
+        Lexer lexer = new Lexer(Files.readString(Path.of("examples/sample.ey")));
+        List<Token> t = lexer.scanTokens();
+        assertFalse(lexer.hasErrors());
+        assertEquals(EOF, t.get(t.size() - 1).type());
+        assertTrue(t.size() > 50);
+    }
+
+    @Test
+    void errorsSampleReportsAllFiveProblems() throws Exception {
+        Lexer lexer = new Lexer(Files.readString(Path.of("examples/errors.ey")));
+        lexer.scanTokens();
+        assertEquals(5, lexer.getErrors().size());
     }
 }

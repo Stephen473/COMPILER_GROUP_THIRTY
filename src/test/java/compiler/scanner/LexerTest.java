@@ -320,4 +320,46 @@ class LexerTest {
         lexer.scanTokens();
         assertEquals(5, lexer.getErrors().size());
     }
+
+    // ---- Stage 9: robustness -----------------------------------------
+
+    @Test
+    void unexpectedCharacterInsideCodeIsReportedWithPosition() {
+        List<LexicalError> errs = errorsOf("int x = 5 @ 3;");
+        assertEquals(1, errs.size());
+        assertEquals(1, errs.get(0).line());
+        assertEquals(11, errs.get(0).column());
+    }
+
+    @Test
+    void errorsInRealCodeDoNotStopScanning() {
+        Lexer lexer = new Lexer("int a = 1 @ 2 # 3;");
+        List<Token> t = lexer.scanTokens();
+        assertEquals(2, lexer.getErrors().size());
+        assertEquals(EOF, t.get(t.size() - 1).type());
+        assertEquals(SEMICOLON, t.get(t.size() - 2).type());
+    }
+
+    @Test
+    void loneAmpersandInsideAnExpression() {
+        assertEquals(1, errorsOf("a & b").size());
+    }
+
+    @Test
+    void loneBarInsideAnExpression() {
+        assertEquals(1, errorsOf("a | b").size());
+    }
+
+    @Test
+    void nonAsciiCharacterIsReportedAsCodePoint() {
+        List<LexicalError> errs = errorsOf("int \u00e9 = 1;");
+        assertEquals(1, errs.size());
+        assertTrue(errs.get(0).message().contains("U+00E9"));
+    }
+
+    @Test
+    void windowsLineEndingsAreFine() {
+        List<Token> t = scan("int a;\r\nint b;");
+        assertEquals(2, t.get(3).line());
+    }
 }

@@ -90,7 +90,30 @@ public class Parser {
 
     /** expression -> or */
     Expr expression() {
-        throw error(peek(), "Expected an expression, found " + describe(peek())); // filled in by stage 5
+        return primary();
+    }
+
+    /** primary -> INT_LITERAL | BOOL_LITERAL | IDENTIFIER | "(" expression ")" */
+    private Expr primary() {
+        if (match(INT_LITERAL)) {
+            Token t = previous();
+            // The scanner already rejected numbers that are too large, so this cannot overflow.
+            return new Expr.IntLiteral(Integer.parseInt(t.lexeme()), t.line(), t.column());
+        }
+        if (match(BOOL_LITERAL)) {
+            Token t = previous();
+            return new Expr.BoolLiteral(t.lexeme().equals("true"), t.line(), t.column());
+        }
+        if (match(IDENTIFIER)) {
+            Token t = previous();
+            return new Expr.Variable(t.lexeme(), t.line(), t.column());
+        }
+        if (match(LPAREN)) {
+            Expr inner = expression();
+            consume(RPAREN, "Expected ')' after the expression");
+            return inner; // no node for parentheses: the tree shape already shows the grouping
+        }
+        throw error(peek(), "Expected an expression, found " + describe(peek()));
     }
 
     // ------------------------------------------------------------------ errors and recovery

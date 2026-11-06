@@ -19,6 +19,17 @@ class ParserTest {
         return parserFor(source).parse();
     }
 
+    /** Parses just one expression and shows it fully parenthesised. */
+    private static String expr(String source) {
+        return AstPrinter.inline(parserFor(source).expression());
+    }
+
+    private static ParseError exprError(String source) {
+        Parser.ParseException e = assertThrows(Parser.ParseException.class,
+                () -> parserFor(source).expression());
+        return e.error();
+    }
+
     // ---- Stage 4: skeleton, errors, recovery loop
 
     @Test
@@ -71,6 +82,61 @@ class ParserTest {
     }
 
     // ---- Stage 5: primary expressions
+
+    @Test
+    void integerLiteral() {
+        Expr e = parserFor("42").expression();
+        assertTrue(e instanceof Expr.IntLiteral);
+        assertEquals(42, ((Expr.IntLiteral) e).value());
+    }
+
+    @Test
+    void maximumInteger() {
+        assertEquals("2147483647", expr("2147483647"));
+    }
+
+    @Test
+    void booleanLiterals() {
+        assertEquals("true", expr("true"));
+        assertEquals("false", expr("false"));
+    }
+
+    @Test
+    void variable() {
+        assertEquals("total", expr("total"));
+    }
+
+    @Test
+    void literalRemembersItsPosition() {
+        Expr e = parserFor("\n   abc").expression();
+        assertEquals(2, e.line());
+        assertEquals(4, e.column());
+    }
+
+    @Test
+    void parenthesesLeaveNoNode() {
+        assertEquals("7", expr("(7)"));
+        assertEquals("x", expr("((x))"));
+    }
+
+    @Test
+    void missingClosingParenthesis() {
+        ParseError e = exprError("(1");
+        assertEquals("Expected ')' after the expression", e.message());
+        assertEquals(1, e.line());
+        assertEquals(3, e.column());
+    }
+
+    @Test
+    void notAnExpression() {
+        assertEquals("Expected an expression, found ')'", exprError(")").message());
+        assertEquals("Expected an expression, found 'int'", exprError("int").message());
+    }
+
+    @Test
+    void emptyInputIsNotAnExpression() {
+        assertEquals("Expected an expression, found end of input", exprError("").message());
+    }
 
     // ---- Stage 6: arithmetic and unary operators
 

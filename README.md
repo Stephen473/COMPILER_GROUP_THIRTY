@@ -7,7 +7,7 @@ All five phases live in this single repository.
 | Phase | Deliverable | Due (deadline day) | Status |
 |-------|-------------|--------------------|--------|
 | 1 | Scanner | 25 Oct 2026 | DONE |
-| 2 | Parser | 8 Nov 2026 | Not started |
+| 2 | Parser | 8 Nov 2026 | DONE |
 | 3 | Semantic analysis / IR | 22 Nov 2026 | Not started |
 | 4 | Code generation | 6 Dec 2026 | Not started |
 | 5 | Optimizer + final demo | 13 Dec 2026 | Not started |

@@ -1,4 +1,4 @@
-# COMPILER_GROUP_30
+# COMPILER_GROUP_THIRTY
 
 A compiler for **Eyra**, our own small language (integers, booleans, constants,
 `if/else`, `while`, `print`), written in Java 17 and built with Maven.

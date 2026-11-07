@@ -259,9 +259,8 @@ factor      -> unary (("*" | "/" | "%") unary)*
 unary       -> ("-" | "!") unary | primary
 primary     -> INT_LITERAL | BOOL_LITERAL | IDENTIFIER | "(" expression ")"
 ```
-
-The semantic rule "`const` needs an initializer" is checked by the parser or
-the semantic analyzer (the group decides in Phase 2).
+The rule "`const` needs an initializer" is checked by the parser (decided in
+Phase 2): `const int X;` is a syntax error.
 
 ## 16. Not in version 1.0
 

@@ -90,7 +90,51 @@ public class Parser {
 
     /** expression -> or */
     Expr expression() {
-        return term();
+        return or();
+    }
+
+    /** or -> and ("||" and)* */
+    private Expr or() {
+        Expr left = and();
+        while (match(OR)) {
+            Token op = previous();
+            Expr right = and();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
+    }
+
+    /** and -> equality ("&&" equality)* */
+    private Expr and() {
+        Expr left = equality();
+        while (match(AND)) {
+            Token op = previous();
+            Expr right = equality();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
+    }
+
+    /** equality -> comparison (("==" | "!=") comparison)* */
+    private Expr equality() {
+        Expr left = comparison();
+        while (match(EQ, NEQ)) {
+            Token op = previous();
+            Expr right = comparison();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
+    }
+
+    /** comparison -> term (("<" | "<=" | ">" | ">=") term)* */
+    private Expr comparison() {
+        Expr left = term();
+        while (match(LT, LE, GT, GE)) {
+            Token op = previous();
+            Expr right = term();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
     }
 
     /** term -> factor (("+" | "-") factor)* */

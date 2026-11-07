@@ -1,0 +1,25 @@
+// Eyra feature tour: every statement and operator the parser understands
+const int LIMIT = 20;
+int n = 1;
+int total;
+bool found = false;
+
+while (n <= LIMIT) {
+    if (n % 15 == 0) {
+        found = true;
+        break;
+    } else if (n % 2 == 0 || n % 3 == 0) {
+        total = total + n * 2 - 1;
+    } else {
+        n = n + 1;
+        continue;
+    }
+    n = n + 1;
+}
+
+{
+    bool shadow = !found && (total >= 10);
+    print(-total);
+    print(shadow);
+}
+print(found);

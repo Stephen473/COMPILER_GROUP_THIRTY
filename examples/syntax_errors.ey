@@ -1,0 +1,10 @@
+// Eyra syntax errors: the parser reports every one of them
+int a = 5
+int b = ;
+print(a + );
+if (a > 1 {
+    print(a);
+}
+}
+while (a < 10) {
+    a = a + 1;

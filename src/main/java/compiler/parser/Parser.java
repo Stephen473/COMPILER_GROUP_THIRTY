@@ -83,7 +83,145 @@ public class Parser {
     }
 
     private Stmt statement() {
+        if (check(KW_INT) || check(KW_BOOL) || check(KW_CONST)) {
+            return declaration();
+        }
+        if (check(KW_PRINT)) {
+            return printStatement();
+        }
+        if (check(IDENTIFIER)) {
+            return assignment();
+        }
+        if (check(KW_IF)) {
+            return ifStatement();
+        }
+        if (check(KW_WHILE)) {
+            return whileStatement();
+        }
+        if (check(KW_BREAK) || check(KW_CONTINUE)) {
+            return jumpStatement();
+        }
+        if (check(LBRACE)) {
+            return block();
+        }
+        if (check(RBRACE)) {
+            throw error(peek(), "Unmatched '}': there is no open '{' for it");
+        }
+        if (check(KW_ELSE)) {
+            throw error(peek(), "'else' without a matching 'if'");
+        }
         throw error(peek(), "Expected a statement, found " + describe(peek()));
+    }
+
+    /** declaration -> ["const"] type IDENTIFIER ["=" expression] ";" */
+    private Stmt declaration() {
+        Token first = peek();
+        boolean isConst = match(KW_CONST);
+        if (!match(KW_INT, KW_BOOL)) {
+            throw error(peek(), "Expected 'int' or 'bool' after 'const'");
+        }
+        Token typeToken = previous();
+        Type type = typeToken.type() == KW_INT ? Type.INT : Type.BOOL;
+        Token name = consume(IDENTIFIER, "Expected a variable name after '" + typeToken.lexeme() + "'");
+
+        Expr initializer = null;
+        if (match(ASSIGN)) {
+            initializer = expression();
+        } else if (isConst) {
+            // Not fatal: record the error, keep parsing, so the semicolon is still consumed.
+            errors.add(new ParseError(
+                    "A const declaration must have an initializer: write 'const " + type.keyword()
+                            + " " + name.lexeme() + " = value;'",
+                    name.line(), name.column()));
+        }
+        expectSemicolon("variable declaration");
+        return new Stmt.VarDecl(type, name.lexeme(), initializer, isConst, first.line(), first.column());
+    }
+
+    /** assignment -> IDENTIFIER "=" expression ";" */
+    private Stmt assignment() {
+        Token name = advance();
+        consume(ASSIGN, "Expected '=' after '" + name.lexeme() + "'");
+        Expr value = expression();
+        expectSemicolon("assignment");
+        return new Stmt.Assign(name.lexeme(), value, name.line(), name.column());
+    }
+
+    /** printStmt -> "print" "(" expression ")" ";" */
+    private Stmt printStatement() {
+        Token keyword = advance();
+        consume(LPAREN, "Expected '(' after 'print'");
+        Expr value = expression();
+        consume(RPAREN, "Expected ')' after the expression");
+        expectSemicolon("print statement");
+        return new Stmt.Print(value, keyword.line(), keyword.column());
+    }
+
+    /** ifStmt -> "if" "(" expression ")" block ["else" (ifStmt | block)] */
+    private Stmt.If ifStatement() {
+        Token keyword = advance();
+        consume(LPAREN, "Expected '(' after 'if'");
+        Expr condition = expression();
+        consume(RPAREN, "Expected ')' after the condition");
+        if (!check(LBRACE)) {
+            throw error(peek(), "Expected '{' to start the 'if' body");
+        }
+        Stmt.Block thenBranch = block();
+
+        Stmt elseBranch = null;
+        if (match(KW_ELSE)) {
+            if (check(KW_IF)) {
+                elseBranch = ifStatement();
+            } else if (check(LBRACE)) {
+                elseBranch = block();
+            } else {
+                throw error(peek(), "Expected '{' or 'if' after 'else'");
+            }
+        }
+        return new Stmt.If(condition, thenBranch, elseBranch, keyword.line(), keyword.column());
+    }
+
+    /** whileStmt -> "while" "(" expression ")" block */
+    private Stmt whileStatement() {
+        Token keyword = advance();
+        consume(LPAREN, "Expected '(' after 'while'");
+        Expr condition = expression();
+        consume(RPAREN, "Expected ')' after the condition");
+        if (!check(LBRACE)) {
+            throw error(peek(), "Expected '{' to start the 'while' body");
+        }
+        Stmt.Block body = block();
+        return new Stmt.While(condition, body, keyword.line(), keyword.column());
+    }
+
+    /** "break" ";" | "continue" ";" */
+    private Stmt jumpStatement() {
+        Token keyword = advance();
+        expectSemicolon("'" + keyword.lexeme() + "'");
+        if (keyword.type() == KW_BREAK) {
+            return new Stmt.Break(keyword.line(), keyword.column());
+        }
+        return new Stmt.Continue(keyword.line(), keyword.column());
+    }
+
+    /** block -> "{" statement* "}" */
+    private Stmt.Block block() {
+        Token open = advance(); // the '{'
+        List<Stmt> statements = new ArrayList<>();
+        while (!check(RBRACE) && !isAtEnd()) {
+            Stmt statement = statementOrNull();
+            if (statement != null) {
+                statements.add(statement);
+            }
+        }
+        if (isAtEnd()) {
+            // Reported at the '{' that was never closed: that is where the programmer must look.
+            errors.add(new ParseError("Unclosed '{': this block is never closed with '}'",
+                    open.line(), open.column()));
+        } else {
+            advance(); // the '}'
+        }
+        return new Stmt.Block(statements, open.line(), open.column());
     }
 
     // ------------------------------------------------------------------ expressions
@@ -194,6 +332,15 @@ public class Parser {
 
     // ------------------------------------------------------------------ errors and recovery
 
+    /** Expects a ';'. */
+    private void expectSemicolon(String what) {
+        if (match(SEMICOLON)) {
+            return;
+        }
+        // "Missing ;" is best pointed at the end of the previous token, not at the next line.
+        throw errorAfter(previous(), "Expected ';' after " + what);
+    }
+
     /**
      * Panic-mode recovery: after an error, skip tokens until a place where a new
      * statement can safely begin.
@@ -203,12 +350,25 @@ public class Parser {
             if (previous().type() == SEMICOLON) {
                 return; // just finished a statement
             }
+            switch (peek().type()) {
+                case KW_INT, KW_BOOL, KW_CONST, KW_IF, KW_WHILE, KW_PRINT,
+                     KW_BREAK, KW_CONTINUE, LBRACE, RBRACE:
+                    return; // the next token starts a statement, or closes the current block
+                default:
+                    break;
+            }
             advance();
         }
     }
 
     private ParseException error(Token at, String message) {
         return new ParseException(new ParseError(message, at.line(), at.column()));
+    }
+
+    /** An error placed just after the given token. */
+    private ParseException errorAfter(Token token, String message) {
+        return new ParseException(
+                new ParseError(message, token.line(), token.column() + token.lexeme().length()));
     }
 
     private String describe(Token token) {

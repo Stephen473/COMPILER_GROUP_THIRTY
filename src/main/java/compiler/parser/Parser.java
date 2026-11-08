@@ -90,6 +90,38 @@ public class Parser {
 
     /** expression -> or */
     Expr expression() {
+        return term();
+    }
+
+    /** term -> factor (("+" | "-") factor)* */
+    private Expr term() {
+        Expr left = factor();
+        while (match(PLUS, MINUS)) {
+            Token op = previous();
+            Expr right = factor();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
+    }
+
+    /** factor -> unary (("*" | "/" | "%") unary)* */
+    private Expr factor() {
+        Expr left = unary();
+        while (match(STAR, SLASH, PERCENT)) {
+            Token op = previous();
+            Expr right = unary();
+            left = new Expr.Binary(left, op.lexeme(), right, op.line(), op.column());
+        }
+        return left;
+    }
+
+    /** unary -> ("-" | "!") unary | primary */
+    private Expr unary() {
+        if (match(MINUS, NOT)) {
+            Token op = previous();
+            Expr operand = unary();
+            return new Expr.Unary(op.lexeme(), operand, op.line(), op.column());
+        }
         return primary();
     }
 

@@ -276,5 +276,69 @@ class SemanticTest {
 
     // ---- Stage 5: const, break, continue
 
+    @Test
+    void assigningToAConstIsAnError() {
+        Analyzer a = analyze("const int LIMIT = 10;\nLIMIT = 5;");
+        assertEquals(1, a.getErrors().size());
+        assertEquals("Cannot assign to 'LIMIT': it is a const (declared at line 1)", a.getErrors().get(0).message());
+        assertEquals(2, a.getErrors().get(0).line());
+        assertEquals(1, a.getErrors().get(0).column());
+    }
+
+    @Test
+    void aConstCanBeRead() {
+        assertClean("const int N = 3; int x = N * 2;");
+    }
+
+    @Test
+    void aNonConstShadowingAConstCanBeAssigned() {
+        assertClean("const int N = 1; { int N = 2; N = 3; }");
+    }
+
+    @Test
+    void aConstShadowingANonConstCannotBeAssigned() {
+        assertEquals(1, messages("int N = 1; { const int N = 2; N = 3; }").size());
+    }
+
+    @Test
+    void assigningTheWrongTypeToAConstReportsBothProblems() {
+        assertEquals(2, messages("const int N = 1; N = true;").size());
+    }
+
+    @Test
+    void breakAndContinueOutsideALoop() {
+        Analyzer a = analyze("break;\ncontinue;");
+        assertEquals(2, a.getErrors().size());
+        assertEquals("'break' can only be used inside a while loop", a.getErrors().get(0).message());
+        assertEquals("'continue' can only be used inside a while loop", a.getErrors().get(1).message());
+        assertEquals(2, a.getErrors().get(1).line());
+    }
+
+    @Test
+    void breakAndContinueInsideALoopAreFine() {
+        assertClean("while (true) { break; }");
+        assertClean("while (true) { continue; }");
+    }
+
+    @Test
+    void breakInsideABlockOrIfInsideALoop() {
+        assertClean("while (true) { if (true) { { continue; } } else { break; } }");
+    }
+
+    @Test
+    void breakAfterTheLoopHasEnded() {
+        assertEquals(1, messages("while (true) { } break;").size());
+    }
+
+    @Test
+    void breakInAnIfOutsideAnyLoop() {
+        assertEquals(1, messages("if (true) { break; }").size());
+    }
+
+    @Test
+    void nestedLoops() {
+        assertClean("while (true) { while (false) { break; } continue; }");
+    }
+
     // ---- Stage 6: types of expressions, error order, whole programs
 }

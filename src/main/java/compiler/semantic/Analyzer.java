@@ -29,6 +29,7 @@ public class Analyzer {
 
     private final SymbolTable symbols = new SymbolTable();
     private final List<SemanticError> errors = new ArrayList<>();
+    private int loopDepth = 0;
 
     // ------------------------------------------------------------------ public API
 
@@ -63,7 +64,9 @@ public class Analyzer {
             }
         } else if (s instanceof Stmt.While w) {
             condition("while", w.condition());
+            loopDepth++;
             statement(w.body());
+            loopDepth--;
         } else if (s instanceof Stmt.Block b) {
             symbols.enterScope();
             for (Stmt inner : b.statements()) {
@@ -71,7 +74,13 @@ public class Analyzer {
             }
             symbols.exitScope();
         } else if (s instanceof Stmt.Break) {
+            if (loopDepth == 0) {
+                error("'break' can only be used inside a while loop", s.line(), s.column());
+            }
         } else if (s instanceof Stmt.Continue) {
+            if (loopDepth == 0) {
+                error("'continue' can only be used inside a while loop", s.line(), s.column());
+            }
         }
     }
 
@@ -97,6 +106,10 @@ public class Analyzer {
         if (target == null) {
             error("Undeclared variable '" + a.name() + "'", a.line(), a.column());
             return;
+        }
+        if (target.isConst()) {
+            error("Cannot assign to '" + a.name() + "': it is a const (declared at line "
+                    + target.line() + ")", a.line(), a.column());
         }
         if (valueType != null && valueType != target.type()) {
             error("Cannot assign " + withArticle(valueType) + " value to '" + a.name() + "' ("

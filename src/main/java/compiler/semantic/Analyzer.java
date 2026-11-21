@@ -1,0 +1,137 @@
+package compiler.semantic;
+
+import compiler.ast.Expr;
+import compiler.ast.Program;
+import compiler.ast.Stmt;
+import compiler.ast.Type;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Semantic analysis: checks what the parser cannot, namely the meaning of the program.
+ * It walks the syntax tree once and collects errors (it never throws on a bad program).
+ *
+ * Checks, by stage:
+ *   2  names are declared before use, no duplicates in a scope, block scoping
+ *   3  operand types of every operator
+ *   4  initializer, assignment and condition types
+ *   5  assignment to const, break and continue outside a loop
+ *   6  a type for every expression, errors in source order
+ *
+ * A type of null means "unknown, an error was already reported". An operator with an
+ * unknown operand also gives unknown, so one mistake does not produce a chain of
+ * follow-up errors.
+ */
+public class Analyzer {
+
+    private final SymbolTable symbols = new SymbolTable();
+    private final List<SemanticError> errors = new ArrayList<>();
+
+    // ------------------------------------------------------------------ public API
+
+    public void analyze(Program program) {
+        for (Stmt statement : program.statements()) {
+            statement(statement);
+        }
+    }
+
+    public List<SemanticError> getErrors() {
+        return errors;
+    }
+
+    public boolean hasErrors() {
+        return !errors.isEmpty();
+    }
+
+    // ------------------------------------------------------------------ statements
+
+    private void statement(Stmt s) {
+        if (s instanceof Stmt.VarDecl d) {
+            varDecl(d);
+        } else if (s instanceof Stmt.Assign a) {
+            assign(a);
+        } else if (s instanceof Stmt.Print p) {
+            expr(p.value());
+        } else if (s instanceof Stmt.If i) {
+            expr(i.condition());
+            statement(i.thenBranch());
+            if (i.elseBranch() != null) {
+                statement(i.elseBranch());
+            }
+        } else if (s instanceof Stmt.While w) {
+            expr(w.condition());
+            statement(w.body());
+        } else if (s instanceof Stmt.Block b) {
+            symbols.enterScope();
+            for (Stmt inner : b.statements()) {
+                statement(inner);
+            }
+            symbols.exitScope();
+        } else if (s instanceof Stmt.Break) {
+        } else if (s instanceof Stmt.Continue) {
+        }
+    }
+
+    private void varDecl(Stmt.VarDecl d) {
+        // The initializer is checked BEFORE the name is declared, so "int x = x;" is an error.
+        Type initType = d.initializer() == null ? null : expr(d.initializer());
+        Symbol previous = symbols.lookupInCurrentScope(d.name());
+        if (previous != null) {
+            error("'" + d.name() + "' is already declared in this scope (first declared at line "
+                    + previous.line() + ")", d.line(), d.column());
+            return;
+        }
+        symbols.declare(new Symbol(d.name(), d.type(), d.isConst(), d.line(), d.column()));
+    }
+
+    private void assign(Stmt.Assign a) {
+        Type valueType = expr(a.value());
+        Symbol target = symbols.lookup(a.name());
+        if (target == null) {
+            error("Undeclared variable '" + a.name() + "'", a.line(), a.column());
+            return;
+        }
+    }
+
+    // ------------------------------------------------------------------ expressions
+
+    /** Checks an expression and returns its type, or null if it has an error. */
+    private Type expr(Expr e) {
+        if (e instanceof Expr.IntLiteral) {
+            return Type.INT;
+        } else if (e instanceof Expr.BoolLiteral) {
+            return Type.BOOL;
+        } else if (e instanceof Expr.Variable v) {
+            Symbol symbol = symbols.lookup(v.name());
+            if (symbol == null) {
+                error("Undeclared variable '" + v.name() + "'", v.line(), v.column());
+                return null;
+            }
+            return symbol.type();
+        } else if (e instanceof Expr.Unary u) {
+            return unary(u);
+        } else {
+            return binary((Expr.Binary) e);
+        }
+    }
+
+    private Type unary(Expr.Unary u) {
+        Type operand = expr(u.operand());
+        return null;
+    }
+
+    private Type binary(Expr.Binary b) {
+        Type left = expr(b.left());
+        Type right = expr(b.right());
+        return null;
+    }
+
+    // ------------------------------------------------------------------ errors
+
+    private void error(String message, int line, int column) {
+        errors.add(new SemanticError(message, line, column));
+    }
+}

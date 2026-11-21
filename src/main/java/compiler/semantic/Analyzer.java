@@ -29,6 +29,7 @@ public class Analyzer {
 
     private final SymbolTable symbols = new SymbolTable();
     private final List<SemanticError> errors = new ArrayList<>();
+    private final Map<Expr, Type> types = new IdentityHashMap<>();
     private int loopDepth = 0;
 
     // ------------------------------------------------------------------ public API
@@ -37,6 +38,9 @@ public class Analyzer {
         for (Stmt statement : program.statements()) {
             statement(statement);
         }
+        errors.sort((a, b) -> a.line() != b.line()
+                ? Integer.compare(a.line(), b.line())
+                : Integer.compare(a.column(), b.column()));
     }
 
     public List<SemanticError> getErrors() {
@@ -45,6 +49,11 @@ public class Analyzer {
 
     public boolean hasErrors() {
         return !errors.isEmpty();
+    }
+
+    /** The type of an expression, or null if it had an error. Only valid for nodes of the analyzed tree. */
+    public Type typeOf(Expr expression) {
+        return types.get(expression);
     }
 
     // ------------------------------------------------------------------ statements
@@ -130,6 +139,12 @@ public class Analyzer {
 
     /** Checks an expression and returns its type, or null if it has an error. */
     private Type expr(Expr e) {
+        Type t = exprType(e);
+        types.put(e, t);
+        return t;
+    }
+
+    private Type exprType(Expr e) {
         if (e instanceof Expr.IntLiteral) {
             return Type.INT;
         } else if (e instanceof Expr.BoolLiteral) {

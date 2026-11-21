@@ -341,4 +341,71 @@ class SemanticTest {
     }
 
     // ---- Stage 6: types of expressions, error order, whole programs
+
+    @Test
+    void everyCheckedExpressionHasAType() {
+        Program p = parse("int x = 1 + 2; bool b = x < 3;");
+        Analyzer a = new Analyzer();
+        a.analyze(p);
+        Stmt.VarDecl first = (Stmt.VarDecl) p.statements().get(0);
+        Stmt.VarDecl second = (Stmt.VarDecl) p.statements().get(1);
+        assertEquals(Type.INT, a.typeOf(first.initializer()));
+        assertEquals(Type.BOOL, a.typeOf(second.initializer()));
+    }
+
+    @Test
+    void literalsAndVariablesHaveTypes() {
+        Program p = parse("int n = 4; print(n); print(true);");
+        Analyzer a = new Analyzer();
+        a.analyze(p);
+        assertEquals(Type.INT, a.typeOf(((Stmt.Print) p.statements().get(1)).value()));
+        assertEquals(Type.BOOL, a.typeOf(((Stmt.Print) p.statements().get(2)).value()));
+    }
+
+    @Test
+    void anInvalidExpressionHasNoType() {
+        Program p = parse("print(missing);");
+        Analyzer a = new Analyzer();
+        a.analyze(p);
+        assertNull(a.typeOf(((Stmt.Print) p.statements().get(0)).value()));
+    }
+
+    @Test
+    void errorsAreReportedInSourceOrder() {
+        // in "x = y;" the value is checked before the target, but x comes first in the source
+        assertEquals(List.of("Undeclared variable 'x'", "Undeclared variable 'y'"), messages("x = y;"));
+    }
+
+    @Test
+    void aProgramWithManyKindsOfErrors() {
+        String source = """
+                int a = 1;
+                int a = 2;
+                bool f = a;
+                const int K = 1;
+                K = 2;
+                if (a) { break; }
+                print(undefined);
+                """;
+        Analyzer analyzer = analyze(source);
+        assertEquals(6, analyzer.getErrors().size());
+        assertEquals(2, analyzer.getErrors().get(0).line());
+        assertEquals(7, analyzer.getErrors().get(5).line());
+    }
+
+    @Test
+    void hasErrorsReflectsTheErrorList() {
+        assertFalse(analyze("int a = 1;").hasErrors());
+        assertTrue(analyze("print(a);").hasErrors());
+    }
+
+    @Test
+    void theSampleProgramIsCorrect() throws IOException {
+        assertClean(Files.readString(Path.of("examples/sample.ey")));
+    }
+
+    @Test
+    void theFeatureTourIsCorrect() throws IOException {
+        assertClean(Files.readString(Path.of("examples/features.ey")));
+    }
 }

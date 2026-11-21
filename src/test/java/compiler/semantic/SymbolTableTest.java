@@ -53,3 +53,52 @@ class SymbolTableTest {
         assertTrue(t.declare(sym("x", Type.BOOL)));
         assertEquals(Type.BOOL, t.lookup("x").type());
     }
+
+    @Test
+    void outerNameReturnsWhenTheScopeEnds() {
+        SymbolTable t = new SymbolTable();
+        t.declare(sym("x", Type.INT));
+        t.enterScope();
+        t.declare(sym("x", Type.BOOL));
+        t.exitScope();
+        assertEquals(Type.INT, t.lookup("x").type());
+    }
+
+    @Test
+    void innerNamesDisappearWhenTheScopeEnds() {
+        SymbolTable t = new SymbolTable();
+        t.enterScope();
+        t.declare(sym("temp", Type.INT));
+        t.exitScope();
+        assertNull(t.lookup("temp"));
+    }
+
+    @Test
+    void lookupInCurrentScopeIgnoresOuterScopes() {
+        SymbolTable t = new SymbolTable();
+        t.declare(sym("x", Type.INT));
+        t.enterScope();
+        assertNull(t.lookupInCurrentScope("x"));
+        assertNotNull(t.lookup("x"));
+    }
+
+    @Test
+    void theGlobalScopeCannotBeLeft() {
+        SymbolTable t = new SymbolTable();
+        assertThrows(IllegalStateException.class, t::exitScope);
+    }
+
+    @Test
+    void symbolKeepsConstAndPosition() {
+        Symbol s = new Symbol("LIMIT", Type.INT, true, 3, 7);
+        assertTrue(s.isConst());
+        assertEquals(3, s.line());
+        assertEquals(7, s.column());
+    }
+
+    @Test
+    void errorToStringIsReadable() {
+        assertEquals("Semantic error at line 2, col 5: Undeclared variable 'y'",
+                new SemanticError("Undeclared variable 'y'", 2, 5).toString());
+    }
+}

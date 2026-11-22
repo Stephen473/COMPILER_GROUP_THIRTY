@@ -32,6 +32,8 @@ public class IrGenerator {
     private final Map<String, Integer> declared = new HashMap<>();
     private int tempCount = 0;
     private int labelCount = 0;
+    private final Deque<String> continueLabels = new ArrayDeque<>();
+    private final Deque<String> breakLabels = new ArrayDeque<>();
 
     /** The analyzer must already have analyzed the program, and found no errors. */
     public IrGenerator(Program program, Analyzer analysis) {
@@ -66,7 +68,66 @@ public class IrGenerator {
                 statement(inner);
             }
             scopes.pop();
+        } else if (s instanceof Stmt.If i) {
+            ifStatement(i);
+        } else if (s instanceof Stmt.While w) {
+            whileStatement(w);
+        } else if (s instanceof Stmt.Break) {
+            code.add(new Instr.Jump(breakLabels.peek()));
+        } else if (s instanceof Stmt.Continue) {
+            code.add(new Instr.Jump(continueLabels.peek()));
         }
+    }
+
+    /**
+     * <pre>
+     *   jumpIfFalse cond, Lelse
+     *   ...then...
+     *   jump Lend          (only when there is an else)
+     * Lelse:
+     *   ...else...
+     * Lend:
+     * </pre>
+     */
+    private void ifStatement(Stmt.If i) {
+        Operand condition = expr(i.condition());
+        String elseLabel = newLabel();
+        code.add(new Instr.JumpIfFalse(condition, elseLabel));
+        statement(i.thenBranch());
+        if (i.elseBranch() == null) {
+            code.add(new Instr.Label(elseLabel));
+            return;
+        }
+        String endLabel = newLabel();
+        code.add(new Instr.Jump(endLabel));
+        code.add(new Instr.Label(elseLabel));
+        statement(i.elseBranch());
+        code.add(new Instr.Label(endLabel));
+    }
+
+    /**
+     * <pre>
+     * Lstart:
+     *   jumpIfFalse cond, Lend
+     *   ...body...
+     *   jump Lstart
+     * Lend:
+     * </pre>
+     * 'continue' jumps to Lstart and 'break' jumps to Lend.
+     */
+    private void whileStatement(Stmt.While w) {
+        String start = newLabel();
+        String end = newLabel();
+        code.add(new Instr.Label(start));
+        Operand condition = expr(w.condition());
+        code.add(new Instr.JumpIfFalse(condition, end));
+        continueLabels.push(start);
+        breakLabels.push(end);
+        statement(w.body());
+        breakLabels.pop();
+        continueLabels.pop();
+        code.add(new Instr.Jump(start));
+        code.add(new Instr.Label(end));
     }
 
     // ------------------------------------------------------------------ expressions

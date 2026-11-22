@@ -55,7 +55,7 @@ class ExamplesTest {
 
     @Test
     void mainPrintsTheTreeForAValidProgram() {
-        Object[] r = run("examples/sample.ey");
+        Object[] r = run("--ast", "examples/sample.ey");
         assertEquals(0, r[0]);
         String out = (String) r[1];
         assertTrue(out.startsWith("Program\n"));

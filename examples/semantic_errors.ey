@@ -1,0 +1,11 @@
+// Eyra semantic errors: the syntax is fine, the meaning is not
+int count = 1;
+int count = 2;
+bool done = count;
+const int LIMIT = 10;
+LIMIT = 20;
+if (count) {
+    break;
+}
+print(missing + 1);
+bool flag = 1 + true;

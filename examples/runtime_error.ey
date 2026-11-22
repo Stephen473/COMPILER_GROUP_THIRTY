@@ -1,0 +1,5 @@
+// Eyra runtime errors: the program is correct, but it fails when it runs
+int zero = 0;
+print(10);
+print(10 / zero);
+print(11);
